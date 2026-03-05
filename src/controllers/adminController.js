@@ -5,7 +5,8 @@ const User = require("../models/User");
 exports.dashboard = async (req, res) => {
   const totalUsers = await User.countDocuments();
   const totalVaults = await Vault.countDocuments();
-  const totalBookings = await Booking.countDocuments();
+  // Only count vaults currently booked (admin may have set some to available)
+  const totalBookings = await Vault.countDocuments({ status: "booked" });
 
   res.json({
     totalUsers,
