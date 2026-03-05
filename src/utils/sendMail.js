@@ -1,8 +1,8 @@
 const dns = require("dns");
 const nodemailer = require("nodemailer");
 
-// Prefer IPv4 so SMTP works on hosts (e.g. Render) where IPv6 is unreachable (ENETUNREACH)
-if (dns.setDefaultResultOrder) dns.setDefaultResultOrder("ipv4first");
+const { promisify } = require("util");
+const dnsLookup = promisify(dns.lookup);
 
 const SPAM_NOTICE = "If you don't see this email in your inbox, please check your spam or junk folder.";
 
@@ -12,44 +12,50 @@ function getSmtpConfigured() {
   return false;
 }
 
-let transporter = null;
+let transporterPromise = null;
 
-function getSmtpTransporter() {
-  if (transporter) return transporter;
+/** Resolve host to IPv4 so SMTP works on hosts (e.g. Render) where IPv6 is unreachable (ENETUNREACH). */
+async function resolveHostIPv4(hostname) {
+  const { address } = await dnsLookup(hostname, { family: 4 });
+  return address;
+}
+
+async function getSmtpTransporter() {
+  if (transporterPromise) return transporterPromise;
   if (!getSmtpConfigured()) return null;
 
-  const service = (process.env.EMAIL_SERVICE || "smtp").toLowerCase();
-  const isGmail = service === "gmail";
+  transporterPromise = (async () => {
+    const service = (process.env.EMAIL_SERVICE || "smtp").toLowerCase();
+    const isGmail = service === "gmail";
+    const hostname = isGmail ? "smtp.gmail.com" : (process.env.SMTP_HOST || "smtp.gmail.com");
+    const port = Number(process.env.SMTP_PORT || process.env.EMAIL_PORT) || 587;
 
-  // Longer timeouts for cloud (e.g. Render) where SMTP connection can be slow
-  const socketTimeouts = {
-    connectionTimeout: 60000,  // 60s to establish TCP + TLS
-    greetingTimeout: 60000,
-    socketTimeout: 60000,
-  };
+    // Force IPv4 to avoid ENETUNREACH on Render and similar hosts
+    const host = await resolveHostIPv4(hostname);
 
-  const config = isGmail
-    ? {
-        service: "gmail",
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASSWORD,
-        },
-        ...socketTimeouts,
-      }
-    : {
-        host: process.env.SMTP_HOST || "smtp.gmail.com",
-        port: Number(process.env.SMTP_PORT || process.env.EMAIL_PORT) || 587,
-        secure: process.env.SMTP_SECURE === "true",
-        auth: {
-          user: process.env.EMAIL_USER || process.env.SMTP_USER,
-          pass: process.env.EMAIL_PASSWORD || process.env.SMTP_PASS,
-        },
-        ...socketTimeouts,
-      };
+    const socketTimeouts = {
+      connectionTimeout: 60000,
+      greetingTimeout: 60000,
+      socketTimeout: 60000,
+    };
 
-  transporter = nodemailer.createTransport(config);
-  return transporter;
+    const config = {
+      host,
+      port,
+      secure: process.env.SMTP_SECURE === "true" || (isGmail && port === 465),
+      auth: {
+        user: process.env.EMAIL_USER || process.env.SMTP_USER,
+        pass: process.env.EMAIL_PASSWORD || process.env.SMTP_PASS,
+      },
+      ...socketTimeouts,
+      // TLS SNI: use hostname when connecting by IP so certificate validates
+      tls: { servername: hostname },
+    };
+
+    return nodemailer.createTransport(config);
+  })();
+
+  return transporterPromise;
 }
 
 exports.sendOtpEmail = async (to, otp, purpose = "verification") => {
@@ -65,7 +71,7 @@ exports.sendOtpEmail = async (to, otp, purpose = "verification") => {
     return true;
   }
 
-  const transport = getSmtpTransporter();
+  const transport = await getSmtpTransporter();
   if (!transport) return true;
 
   const from = process.env.EMAIL_FROM || process.env.MAIL_FROM || process.env.EMAIL_USER;
