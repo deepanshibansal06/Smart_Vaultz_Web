@@ -59,8 +59,7 @@ exports.openVault = async (req, res) => {
   const booking = await Booking.findById(req.params.id).populate("vault");
   if (!booking) return res.status(404).json({ message: "Booking not found" });
   if (booking.user.toString() !== req.user.id) return res.status(403).json({ message: "Not your booking" });
-  const now = new Date();
-  if (now < booking.start || now > booking.end) return res.status(400).json({ message: "Booking not active" });
+  // Time-window check removed: open/close is UI-only for now; hardware logic will be wired later
   try {
     if (process.env.ESP_IP) await axios.get(`http://${process.env.ESP_IP}/open`, { timeout: 5000 });
   } catch (_) {}
