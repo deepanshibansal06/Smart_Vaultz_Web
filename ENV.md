@@ -43,6 +43,8 @@ EMAIL_FROM=your-email@example.com
 
 If no email config is set, OTP is only logged to the server console (for development).
 
+**SMTP connection timeout on Render/hosting:** The app uses 60s connection timeouts. If you see `Connection timeout` / `ETIMEDOUT` when sending OTP, try: (1) Use Gmail with an [App Password](https://support.google.com/accounts/answer/185833). (2) For custom SMTP, try port **465** with TLS: set `SMTP_PORT=465` and `SMTP_SECURE=true` (some networks treat 465 more reliably than 587).
+
 ## CORS
 
 The API allows all origins. For production you may restrict `origin` in `src/server.js`.
