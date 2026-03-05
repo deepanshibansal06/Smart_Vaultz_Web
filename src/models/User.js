@@ -4,7 +4,11 @@ const userSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
   password: String,
-  role: { type: String, default: "user" } // user or superadmin
+  role: { type: String, default: "user" }, // user or superadmin
+  phone: { type: String, default: "" },
+  address: { type: String, default: "" },
+  location: { type: String, default: "" },
+  walletBalance: { type: Number, default: 0 },
 });
 
 module.exports = mongoose.model("User", userSchema);

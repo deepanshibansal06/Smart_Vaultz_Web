@@ -1,13 +1,27 @@
 const Booking = require("../models/Booking");
 const Vault = require("../models/Vault");
+const User = require("../models/User");
 const axios = require("axios");
 
 exports.bookVault = async (req, res) => {
   try {
-    const { vaultId, start, end } = req.body;
+    const { vaultId, start, end, paymentMethod } = req.body;
     const vault = await Vault.findById(vaultId);
     if (!vault) return res.status(404).json({ message: "Vault not found" });
     if (vault.status === "booked") return res.status(400).json({ message: "Vault is already booked" });
+
+    const price = Number(vault.price) || 0;
+    const method = paymentMethod === "wallet" ? "wallet" : "upi";
+
+    if (method === "wallet") {
+      const user = await User.findById(req.user.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const balance = Number(user.walletBalance) || 0;
+      if (balance < price) {
+        return res.status(400).json({ message: "Insufficient wallet balance" });
+      }
+      await User.findByIdAndUpdate(req.user.id, { $inc: { walletBalance: -price } });
+    }
 
     const startDate = start ? new Date(start) : new Date();
     const endDate = end ? new Date(end) : new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -36,7 +50,9 @@ exports.myBookings = async (req, res) => {
   const bookings = await Booking.find({ user: req.user.id })
     .populate("vault")
     .sort({ createdAt: -1 });
-  res.json(bookings);
+  // Only show bookings where vault is still booked (admin may have set vault to unbooked)
+  const filtered = bookings.filter((b) => b.vault && b.vault.status === "booked");
+  res.json(filtered);
 };
 
 exports.openVault = async (req, res) => {
