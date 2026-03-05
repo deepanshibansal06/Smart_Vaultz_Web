@@ -3,8 +3,15 @@ const Vault = require("../models/Vault");
 exports.createVault = async (req, res) => {
   try {
     const { lockerNo, location, price, slotDate, timeSlot } = req.body;
+    const lockerNoTrim = (lockerNo != null && String(lockerNo).trim()) ? String(lockerNo).trim() : "";
+    if (lockerNoTrim) {
+      const existing = await Vault.findOne({ lockerNo: lockerNoTrim });
+      if (existing) {
+        return res.status(400).json({ message: "A locker with this number already exists" });
+      }
+    }
     const vault = await Vault.create({
-      lockerNo: (lockerNo != null && String(lockerNo).trim()) ? String(lockerNo).trim() : "",
+      lockerNo: lockerNoTrim,
       location: location != null ? String(location).trim() : "",
       price: price ?? 0,
       slotDate: slotDate != null ? String(slotDate) : "",
@@ -26,6 +33,15 @@ exports.getVaults = async (req, res) => {
 exports.updateVault = async (req, res) => {
   try {
     const { lockerNo, location, price, slotDate, timeSlot, status } = req.body;
+    if (lockerNo != null) {
+      const lockerNoTrim = String(lockerNo).trim();
+      if (lockerNoTrim) {
+        const existing = await Vault.findOne({ lockerNo: lockerNoTrim, _id: { $ne: req.params.id } });
+        if (existing) {
+          return res.status(400).json({ message: "A locker with this number already exists" });
+        }
+      }
+    }
     const update = {};
     if (lockerNo != null) update.lockerNo = String(lockerNo).trim();
     if (location != null) update.location = String(location).trim();
