@@ -38,7 +38,26 @@ RESEND_API_KEY=re_xxxxxxxxxxxx
 RESEND_FROM=SmartVault <onboarding@resend.dev>
 ```
 
-Get your API key at [resend.com](https://resend.com). The free tier allows sending from `onboarding@resend.dev` to any recipient.
+Get your API key at [resend.com](https://resend.com).
+
+**Two ways to send:**
+
+1. **No domain setup (easiest)**  
+   Use Resend’s default sender. Keep:
+   - `RESEND_FROM=SmartVault <onboarding@resend.dev>`  
+   The free tier lets you send from `onboarding@resend.dev` to any recipient. No DNS or domain steps.
+
+2. **Your own domain (e.g. `noreply@yourdomain.com`)**  
+   - In [Resend Dashboard → Domains](https://resend.com/domains), click **Add Domain**.  
+   - Enter your domain or subdomain (e.g. `mail.yourdomain.com` or `yourdomain.com`).  
+   - Resend will show **DKIM** and **SPF** DNS records. Add them at your DNS provider (where you manage your domain):  
+     - **DKIM**: one TXT record (name and value from Resend).  
+     - **SPF**: one TXT record; Resend may also show an MX record for bounces.  
+   - In the Resend dashboard, click **Verify**. Wait until the domain status is **Verified**.  
+   - Set in `.env`:  
+     `RESEND_FROM=SmartVault <noreply@yourdomain.com>` (use an address on the verified domain).  
+
+   If verification fails, see [Resend: Domain not verifying](https://resend.com/knowledge-base/what-if-my-domain-is-not-verifying).
 
 ### Option C: Custom SMTP
 

@@ -1,4 +1,5 @@
 const Vault = require("../models/Vault");
+const Booking = require("../models/Booking");
 
 exports.createVault = async (req, res) => {
   try {
@@ -51,6 +52,10 @@ exports.updateVault = async (req, res) => {
     if (status != null && ["available", "booked"].includes(status)) update.status = status;
     const vault = await Vault.findByIdAndUpdate(req.params.id, update, { new: true });
     if (!vault) return res.status(404).json({ message: "Vault not found" });
+    // When admin sets vault to "available", remove its bookings so the slot is free and user can book again
+    if (status === "available") {
+      await Booking.deleteMany({ vault: req.params.id });
+    }
     res.json(vault.toObject ? vault.toObject() : vault);
   } catch (err) {
     res.status(400).json({ message: err.message || "Failed to update vault" });
