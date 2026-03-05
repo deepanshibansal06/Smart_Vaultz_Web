@@ -1,4 +1,8 @@
+const dns = require("dns");
 const nodemailer = require("nodemailer");
+
+// Prefer IPv4 so SMTP works on hosts (e.g. Render) where IPv6 is unreachable (ENETUNREACH)
+if (dns.setDefaultResultOrder) dns.setDefaultResultOrder("ipv4first");
 
 const SPAM_NOTICE = "If you don't see this email in your inbox, please check your spam or junk folder.";
 
