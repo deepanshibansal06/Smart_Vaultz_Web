@@ -9,10 +9,11 @@ const app = express();
 
 app.use(
   cors({
-    origin: true, // allow any origin (reflects request origin)
+    origin: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
-    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
     credentials: true,
+    optionsSuccessStatus: 204,
   })
 );
 app.use(express.json());
