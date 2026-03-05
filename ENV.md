@@ -13,37 +13,20 @@ Copy `env.example` to `.env` and set values.
 - **HOST** – Bind address (default 0.0.0.0)
 - **ESP_IP** – Locker hardware IP for open/close
 
-## Email (OTP for signup & forgot password) – SMTP only
+## Email (OTP for signup & forgot password) – Resend only
 
-The app sends OTP emails via **SMTP only**. Configure your sender account below. Recipients are the users’ own email addresses (they enter them in the app).
-
-Use **one** of the options below. The app will show a notice to check the spam folder.
-
-### Option A: Gmail (SMTP)
+The app sends OTP emails via **Resend** (HTTPS API). Recipients are the users’ own email addresses. The app shows a notice to check the spam folder.
 
 ```env
-EMAIL_SERVICE=gmail
-EMAIL_USER=your-app-gmail@gmail.com
-EMAIL_PASSWORD=your-app-password
-EMAIL_FROM=your-app-gmail@gmail.com
+RESEND_API_KEY=re_xxxxxxxxxxxx
+RESEND_FROM=SmartVault <onboarding@resend.dev>
 ```
 
-Use a dedicated Gmail as the sender. For Gmail use an [App Password](https://support.google.com/accounts/answer/185833), not your normal password.
+- Get an API key at [resend.com](https://resend.com).
+- Free tier allows sending from `onboarding@resend.dev`.
+- For your own domain: add and verify the domain in the [Resend dashboard](https://resend.com/domains), then set `RESEND_FROM=Your App <noreply@yourdomain.com>`.
 
-### Option B: Custom SMTP
-
-```env
-EMAIL_SERVICE=smtp
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-EMAIL_USER=your-email@example.com
-EMAIL_PASSWORD=your-password
-EMAIL_FROM=your-email@example.com
-```
-
-If no email config is set, OTP is only logged to the server console (for development).
-
-**SMTP connection timeout on Render/hosting:** The app uses 60s connection timeouts. If you see `Connection timeout` / `ETIMEDOUT` when sending OTP, try: (1) Use Gmail with an [App Password](https://support.google.com/accounts/answer/185833). (2) For custom SMTP, try port **465** with TLS: set `SMTP_PORT=465` and `SMTP_SECURE=true` (some networks treat 465 more reliably than 587).
+If `RESEND_API_KEY` is not set, OTP is only logged to the server console (for development).
 
 ## CORS
 
