@@ -1,6 +1,33 @@
 const Vault = require("../models/Vault");
 const Booking = require("../models/Booking");
 
+/** Parse "9:30 PM" or "12:00 AM" to minutes since midnight. */
+function parseTimeToMinutes(str) {
+  if (!str || typeof str !== "string") return null;
+  const trimmed = str.trim();
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return null;
+  let h = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  const ampm = (match[3] || "").toUpperCase();
+  if (ampm === "PM" && h !== 12) h += 12;
+  if (ampm === "AM" && h === 12) h = 0;
+  return h * 60 + m;
+}
+
+/** Get slot end Date from slotDate (YYYY-MM-DD) and timeSlot ("From - Till"). Returns null if invalid. */
+function getSlotEndDate(slotDateStr, timeSlotStr) {
+  if (!slotDateStr || !timeSlotStr) return null;
+  const parts = String(timeSlotStr).split("-").map((s) => s.trim());
+  const tillStr = parts.length >= 2 ? parts[1] : parts[0];
+  const minutes = parseTimeToMinutes(tillStr);
+  if (minutes == null) return null;
+  const [y, mo, d] = slotDateStr.split("-").map(Number);
+  if (!y || !mo || !d) return null;
+  const date = new Date(y, mo - 1, d, Math.floor(minutes / 60), minutes % 60, 0, 0);
+  return date;
+}
+
 exports.createVault = async (req, res) => {
   try {
     const { lockerNo, location, price, slotDate, timeSlot } = req.body;
@@ -10,6 +37,12 @@ exports.createVault = async (req, res) => {
       if (existing) {
         return res.status(400).json({ message: "A locker with this number already exists" });
       }
+    }
+    const slotEnd = getSlotEndDate(slotDate, timeSlot);
+    if (slotEnd && slotEnd <= new Date()) {
+      return res.status(400).json({
+        message: "Cannot create a locker for a date/time that has already passed. Choose a future slot.",
+      });
     }
     const vault = await Vault.create({
       lockerNo: lockerNoTrim,

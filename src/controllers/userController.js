@@ -12,12 +12,13 @@ exports.getMe = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, phone, address, location } = req.body;
+    const { name, phone, address, location, mpinSet } = req.body;
     const update = {};
     if (name !== undefined) update.name = String(name).trim();
     if (phone !== undefined) update.phone = String(phone).trim();
     if (address !== undefined) update.address = String(address).trim();
     if (location !== undefined) update.location = String(location).trim();
+    if (mpinSet === true) update.mpinSet = true;
 
     const user = await User.findByIdAndUpdate(req.user.id, update, { new: true }).select("-password");
     if (!user) return res.status(404).json({ message: "User not found" });
