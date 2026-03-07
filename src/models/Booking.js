@@ -6,7 +6,8 @@ const bookingSchema = new mongoose.Schema({
   start: Date,
   end: Date,
   status: { type: String, default: "booked" },
-  lockStatus: { type: String, default: "closed" }
+  lockStatus: { type: String, default: "closed" },
+  reminderSentAt: { type: Date, default: null }, // set when "10 min left" email is sent
 });
 
 module.exports = mongoose.model("Booking", bookingSchema);
