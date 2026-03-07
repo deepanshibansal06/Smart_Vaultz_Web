@@ -19,6 +19,7 @@ function parseTimeToMinutes(str) {
 }
 
 /** Get slot end Date from slotDate (YYYY-MM-DD) and timeSlot ("From - Till"). */
+/** When Till is 12:00 AM (midnight), it means end of that calendar day → next day 00:00 (e.g. 11:30 PM–12:00 AM slot). */
 function getSlotEndDate(slotDateStr, timeSlotStr) {
   if (!slotDateStr || !timeSlotStr) return null;
   const parts = String(timeSlotStr).split("-").map((s) => s.trim());
@@ -27,6 +28,9 @@ function getSlotEndDate(slotDateStr, timeSlotStr) {
   if (minutes == null) return null;
   const [y, mo, d] = slotDateStr.split("-").map(Number);
   if (!y || !mo || !d) return null;
+  if (minutes === 0) {
+    return new Date(y, mo - 1, d + 1, 0, 0, 0, 0);
+  }
   return new Date(y, mo - 1, d, Math.floor(minutes / 60), minutes % 60, 0, 0);
 }
 

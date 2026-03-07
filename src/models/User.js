@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema({
   location: { type: String, default: "" },
   walletBalance: { type: Number, default: 0 },
   mpinSet: { type: Boolean, default: false },
+  mpinHash: { type: String, default: null }, // bcrypt hash of 4-digit MPIN; never sent to client
 });
 
 module.exports = mongoose.model("User", userSchema);
