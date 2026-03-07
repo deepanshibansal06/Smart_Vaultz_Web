@@ -22,6 +22,7 @@ app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/vaults", require("./routes/vaultRoutes"));
 app.use("/api/bookings", require("./routes/bookingRoutes"));
+app.use("/api/lock", require("./routes/lockRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 
 // Always return JSON on errors (avoids FormatException in app when response is HTML)

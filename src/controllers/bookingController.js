@@ -1,7 +1,6 @@
 const Booking = require("../models/Booking");
 const Vault = require("../models/Vault");
 const User = require("../models/User");
-const axios = require("axios");
 
 exports.bookVault = async (req, res) => {
   try {
@@ -55,27 +54,28 @@ exports.myBookings = async (req, res) => {
   res.json(filtered);
 };
 
+// Only locker number 1 has ESP attached. Other lockers show "No locker attached" when user taps Open/Close.
+function hasHardwareConnected(vault) {
+  if (!vault) return false;
+  return (vault.lockerNo || "").toString().trim() === "1";
+}
+
 exports.openVault = async (req, res) => {
   const booking = await Booking.findById(req.params.id).populate("vault");
   if (!booking) return res.status(404).json({ message: "Booking not found" });
   if (booking.user.toString() !== req.user.id) return res.status(403).json({ message: "Not your booking" });
-  // Time-window check removed: open/close is UI-only for now; hardware logic will be wired later
-  try {
-    if (process.env.ESP_IP) await axios.get(`http://${process.env.ESP_IP}/open`, { timeout: 5000 });
-  } catch (_) {}
   booking.lockStatus = "open";
   await booking.save();
-  res.json({ message: "Vault opened" });
+  const hasHardware = hasHardwareConnected(booking.vault);
+  res.json({ message: "Vault opened", hasHardware });
 };
 
 exports.closeVault = async (req, res) => {
   const booking = await Booking.findById(req.params.id).populate("vault");
   if (!booking) return res.status(404).json({ message: "Booking not found" });
   if (booking.user.toString() !== req.user.id) return res.status(403).json({ message: "Not your booking" });
-  try {
-    if (process.env.ESP_IP) await axios.get(`http://${process.env.ESP_IP}/close`, { timeout: 5000 });
-  } catch (_) {}
   booking.lockStatus = "closed";
   await booking.save();
-  res.json({ message: "Vault closed" });
+  const hasHardware = hasHardwareConnected(booking.vault);
+  res.json({ message: "Vault closed", hasHardware });
 };
