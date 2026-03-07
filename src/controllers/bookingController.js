@@ -1,10 +1,11 @@
 const Booking = require("../models/Booking");
 const Vault = require("../models/Vault");
 const User = require("../models/User");
+const { getSlotStartDate, getSlotEndDate } = require("../utils/slotDates");
 
 exports.bookVault = async (req, res) => {
   try {
-    const { vaultId, start, end, paymentMethod } = req.body;
+    const { vaultId, paymentMethod } = req.body;
     const vault = await Vault.findById(vaultId);
     if (!vault) return res.status(404).json({ message: "Vault not found" });
     if (vault.status === "booked") return res.status(400).json({ message: "Vault is already booked" });
@@ -22,8 +23,12 @@ exports.bookVault = async (req, res) => {
       await User.findByIdAndUpdate(req.user.id, { $inc: { walletBalance: -price } });
     }
 
-    const startDate = start ? new Date(start) : new Date();
-    const endDate = end ? new Date(end) : new Date(Date.now() + 24 * 60 * 60 * 1000);
+    // Use vault's slot start/end so the booking email job can send "10 min left" and "booking over" at the right time
+    const slotStart = vault.slotDate && vault.timeSlot ? getSlotStartDate(vault.slotDate, vault.timeSlot) : null;
+    const slotEnd = vault.slotDate && vault.timeSlot ? getSlotEndDate(vault.slotDate, vault.timeSlot) : null;
+    const startDate = slotStart && slotEnd ? slotStart : (req.body.start ? new Date(req.body.start) : new Date());
+    const endDate = slotStart && slotEnd ? slotEnd : (req.body.end ? new Date(req.body.end) : new Date(Date.now() + 24 * 60 * 60 * 1000));
+
     const conflict = await Booking.findOne({
       vault: vaultId,
       start: { $lt: endDate },
