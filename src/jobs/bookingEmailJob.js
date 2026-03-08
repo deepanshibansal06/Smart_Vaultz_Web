@@ -1,12 +1,14 @@
 const Booking = require("../models/Booking");
 const Vault = require("../models/Vault");
 const sendMail = require("../utils/sendMail");
-const { getSlotEndDate } = require("../utils/slotDates");
+const { getSlotStartDate, getSlotEndDate } = require("../utils/slotDates");
 
 const TEN_MINUTES_MS = 10 * 60 * 1000;
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Run every minute:
+ * 0) Repair old bookings: set start/end from vault slot if currently ~start+24h (so reminder/over run at slot time).
  * 1) Send "10 min left" email (once per booking); no delete.
  * 2) For ended bookings: send "booking over" email, then delete booking + delete vault.
  * 3) Delete any vault whose slot end time has passed (including never-booked vaults).
@@ -16,6 +18,21 @@ async function runBookingEmailJob() {
   const tenMinFromNow = new Date(now.getTime() + TEN_MINUTES_MS);
 
   try {
+    // 0) Fix existing bookings that have end = start+24h but vault has slotDate/timeSlot → use vault slot start/end
+    const allBookings = await Booking.find({}).populate("vault").lean();
+    for (const b of allBookings) {
+      const v = b.vault;
+      if (!v || !v.slotDate || !v.timeSlot) continue;
+      const startMs = b.start ? new Date(b.start).getTime() : 0;
+      const endMs = b.end ? new Date(b.end).getTime() : 0;
+      const diffMs = endMs - startMs;
+      if (Math.abs(diffMs - TWENTY_FOUR_HOURS_MS) > 60 * 60 * 1000) continue; // only fix when ~24h apart
+      const slotStart = getSlotStartDate(v.slotDate, v.timeSlot);
+      const slotEnd = getSlotEndDate(v.slotDate, v.timeSlot);
+      if (!slotStart || !slotEnd) continue;
+      await Booking.findByIdAndUpdate(b._id, { start: slotStart, end: slotEnd });
+    }
+
     // 1) Bookings that end in ≤10 min and we haven't sent reminder yet
     const reminderBookings = await Booking.find({
       end: { $gt: now, $lte: tenMinFromNow },
