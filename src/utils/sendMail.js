@@ -1,4 +1,15 @@
 const SPAM_NOTICE = "If you don't see this email in your inbox, please check your spam or junk folder.";
+const BRAND = "SmartVaultz";
+
+/** Format a Date for display in IST (Asia/Kolkata) so users see their local time in emails. */
+function formatTimeInIST(date) {
+  if (!(date instanceof Date)) return String(date);
+  return date.toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
 
 function isResendConfigured() {
   return process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim().length > 0;
@@ -8,15 +19,15 @@ function buildOtpEmailHtml(otp, purpose) {
   const isForgot = purpose === "forgot";
   const title = isForgot ? "Reset your password" : "Verify your email";
   const intro = isForgot
-    ? "Use the code below to set a new password for your SmartVault account."
-    : "Use the code below to complete your SmartVault sign-up.";
+    ? "Use the code below to set a new password for your SmartVaultz account."
+    : "Use the code below to complete your SmartVaultz sign-up.";
   return `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title} – SmartVault</title>
+  <title>${title} – SmartVaultz</title>
 </head>
 <body style="margin:0; padding:0; background-color:#f0f2f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f0f2f5; padding: 32px 16px;">
@@ -25,7 +36,7 @@ function buildOtpEmailHtml(otp, purpose) {
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 440px;">
           <tr>
             <td style="padding: 32px 28px; background-color:#0D1B2A; border-radius: 16px 16px 0 0; text-align: center;">
-              <span style="font-size: 22px; font-weight: 700; color: #E0E1DD; letter-spacing: -0.5px;">SmartVault</span>
+              <span style="font-size: 22px; font-weight: 700; color: #E0E1DD; letter-spacing: -0.5px;">SmartVaultz</span>
             </td>
           </tr>
           <tr>
@@ -45,7 +56,7 @@ function buildOtpEmailHtml(otp, purpose) {
           </tr>
           <tr>
             <td style="padding: 20px; text-align: center;">
-              <p style="margin: 0; font-size: 12px; color: #9ca3af;">© SmartVault. Secure locker booking.</p>
+              <p style="margin: 0; font-size: 12px; color: #9ca3af;">© SmartVaultz. Secure locker booking.</p>
             </td>
           </tr>
         </table>
@@ -59,7 +70,7 @@ function buildOtpEmailHtml(otp, purpose) {
 async function sendViaResend(to, subject, html) {
   const { Resend } = require("resend");
   const resend = new Resend(process.env.RESEND_API_KEY.trim());
-  const from = process.env.RESEND_FROM || process.env.EMAIL_FROM || "SmartVault <onboarding@resend.dev>";
+  const from = process.env.RESEND_FROM || process.env.EMAIL_FROM || "SmartVaultz <onboarding@resend.dev>";
   const { error } = await resend.emails.send({
     from,
     to: [to.trim().toLowerCase()],
@@ -72,8 +83,8 @@ async function sendViaResend(to, subject, html) {
 exports.sendOtpEmail = async (to, otp, purpose = "verification") => {
   const subject =
     purpose === "forgot"
-      ? "SmartVault – Reset your password"
-      : "SmartVault – Verify your email";
+      ? "SmartVaultz – Reset your password"
+      : "SmartVaultz – Verify your email";
   const html = buildOtpEmailHtml(otp, purpose);
 
   if (!isResendConfigured()) {
@@ -92,7 +103,7 @@ function buildBookingEmailHtml(title, message) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title} – SmartVault</title>
+  <title>${title} – SmartVaultz</title>
 </head>
 <body style="margin:0; padding:0; background-color:#f0f2f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f0f2f5; padding: 32px 16px;">
@@ -101,7 +112,7 @@ function buildBookingEmailHtml(title, message) {
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 440px;">
           <tr>
             <td style="padding: 32px 28px; background-color:#0D1B2A; border-radius: 16px 16px 0 0; text-align: center;">
-              <span style="font-size: 22px; font-weight: 700; color: #E0E1DD; letter-spacing: -0.5px;">SmartVault</span>
+              <span style="font-size: 22px; font-weight: 700; color: #E0E1DD; letter-spacing: -0.5px;">SmartVaultz</span>
             </td>
           </tr>
           <tr>
@@ -112,7 +123,7 @@ function buildBookingEmailHtml(title, message) {
           </tr>
           <tr>
             <td style="padding: 20px; text-align: center;">
-              <p style="margin: 0; font-size: 12px; color: #9ca3af;">© SmartVault. Secure locker booking.</p>
+              <p style="margin: 0; font-size: 12px; color: #9ca3af;">© SmartVaultz. Secure locker booking.</p>
             </td>
           </tr>
         </table>
@@ -125,8 +136,8 @@ function buildBookingEmailHtml(title, message) {
 
 /** Send "10 minutes left" reminder for a booking. */
 exports.sendBookingReminderEmail = async (to, lockerLabel, endTime) => {
-  const subject = "SmartVault – 10 minutes left on your locker booking";
-  const endStr = endTime instanceof Date ? endTime.toLocaleString() : String(endTime);
+  const subject = "SmartVaultz – 10 minutes left on your locker booking";
+  const endStr = formatTimeInIST(endTime);
   const message = `Your locker booking (${lockerLabel}) ends in about <strong>10 minutes</strong> (by ${endStr}). Please collect your items and close the locker before time runs out.`;
   const html = buildBookingEmailHtml("10 minutes left", message);
 
@@ -140,8 +151,8 @@ exports.sendBookingReminderEmail = async (to, lockerLabel, endTime) => {
 
 /** Send "booking over" email, then caller should remove booking and release vault. */
 exports.sendBookingOverEmail = async (to, lockerLabel) => {
-  const subject = "SmartVault – Your locker booking has ended";
-  const message = `Your booking for <strong>${lockerLabel}</strong> is now over. You have been removed from access to this locker. Thank you for using SmartVault.`;
+  const subject = "SmartVaultz – Your locker booking has ended";
+  const message = `Your booking for <strong>${lockerLabel}</strong> is now over. You have been removed from access to this locker. Thank you for using SmartVaultz.`;
   const html = buildBookingEmailHtml("Booking ended", message);
 
   if (!isResendConfigured()) {
