@@ -134,7 +134,7 @@ function buildBookingEmailHtml(title, message) {
 </html>`;
 }
 
-/** Send "10 minutes left" reminder for a booking. */
+/** Send "10 minutes left" reminder (slot end in ≤10 min). Times shown in IST. */
 exports.sendBookingReminderEmail = async (to, lockerLabel, endTime) => {
   const subject = "SmartVaultz – 10 minutes left on your locker booking";
   const endStr = formatTimeInIST(endTime);

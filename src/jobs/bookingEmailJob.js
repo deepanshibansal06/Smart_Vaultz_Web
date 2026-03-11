@@ -7,11 +7,11 @@ const TEN_MINUTES_MS = 10 * 60 * 1000;
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Run every minute:
- * 0) Repair old bookings: set start/end from vault slot if currently ~start+24h (so reminder/over run at slot time).
- * 1) Send "10 min left" email (once per booking); no delete.
- * 2) For ended bookings: send "booking over" email, then delete booking + delete vault.
- * 3) Delete any vault whose slot end time has passed (including never-booked vaults).
+ * Run every 20 seconds for sharp IST timing:
+ * 0) Repair old bookings: set start/end from vault slot if currently ~start+24h.
+ * 1) Send "10 min left" reminder when slot end is in ≤10 min; no delete.
+ * 2) For ended bookings: send "booking over" email sharp at slot end, then delete booking + vault.
+ * 3) Delete any vault whose slot end time has passed.
  */
 async function runBookingEmailJob() {
   const now = new Date();
@@ -33,7 +33,7 @@ async function runBookingEmailJob() {
       await Booking.findByIdAndUpdate(b._id, { start: slotStart, end: slotEnd });
     }
 
-    // 1) Bookings that end in ≤10 min and we haven't sent reminder yet
+    // 1) Bookings ending in ≤10 min – send "10 min left" reminder (once per booking)
     const reminderBookings = await Booking.find({
       end: { $gt: now, $lte: tenMinFromNow },
       reminderSentAt: null,

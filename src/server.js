@@ -38,7 +38,7 @@ const { runBookingEmailJob } = require("./jobs/bookingEmailJob");
 
 app.listen(PORT, HOST, () => {
   console.log(`Server running on http://${HOST}:${PORT}`);
-  // Every minute: send "10 min left" reminder and "booking over" emails, then remove ended bookings
-  setInterval(runBookingEmailJob, 60 * 1000);
+  // Every 20 seconds: sharp IST timing for "booking started" at slot start and "booking over" at slot end
+  setInterval(runBookingEmailJob, 20 * 1000);
   runBookingEmailJob(); // run once on startup (catches any missed in downtime)
 });
