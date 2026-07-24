@@ -1,2 +1,8 @@
+node_modules
 .env
-.*env
+.env.*
+.DS_Store
+smart_vault_backend.zip
+frontend/.next
+frontend/node_modules
+frontend/.env.local

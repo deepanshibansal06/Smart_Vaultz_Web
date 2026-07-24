@@ -2,6 +2,7 @@ const Booking = require("../models/Booking");
 const Vault = require("../models/Vault");
 const User = require("../models/User");
 const { getSlotStartDate, getSlotEndDate } = require("../utils/slotDates");
+const sendMail = require("../utils/sendMail");
 
 exports.bookVault = async (req, res) => {
   try {
@@ -44,6 +45,14 @@ exports.bookVault = async (req, res) => {
     });
     await Vault.findByIdAndUpdate(vaultId, { status: "booked" });
     const populated = await Booking.findById(booking._id).populate("vault");
+
+    // Send confirmation email to user's registered email address
+    const userObj = await User.findById(req.user.id);
+    if (userObj && userObj.email) {
+      const lockerLabel = `Locker #${vault.lockerNo} (${vault.location || 'Smart Vault Hub'})`;
+      sendMail.sendBookingConfirmationEmail(userObj.email, lockerLabel, startDate, endDate, price).catch(console.error);
+    }
+
     res.status(201).json(populated);
   } catch (err) {
     res.status(400).json({ message: err.message || "Booking failed" });

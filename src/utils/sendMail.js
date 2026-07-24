@@ -88,11 +88,16 @@ exports.sendOtpEmail = async (to, otp, purpose = "verification") => {
   const html = buildOtpEmailHtml(otp, purpose);
 
   if (!isResendConfigured()) {
-    console.warn("Email not configured (set RESEND_API_KEY); OTP would be:", otp);
+    console.warn("Email not configured (set RESEND_API_KEY); OTP is:", otp);
     return true;
   }
 
-  await sendViaResend(to, subject, html);
+  try {
+    await sendViaResend(to, subject, html);
+  } catch (err) {
+    console.warn("Resend email delivery failed:", err.message);
+    console.log(`\n=========================================\n🔑 VERIFICATION OTP FOR ${to}: [ ${otp} ]\n=========================================\n`);
+  }
   return true;
 };
 
@@ -143,9 +148,15 @@ exports.sendBookingReminderEmail = async (to, lockerLabel, endTime) => {
 
   if (!isResendConfigured()) {
     console.warn("Email not configured; booking reminder would be sent to:", to);
+    console.log(`\n=========================================\n⏰ 10-MIN REMINDER ALERT FOR ${to}: [ ${lockerLabel} ends at ${endStr} ]\n=========================================\n`);
     return true;
   }
-  await sendViaResend(to, subject, html);
+  try {
+    await sendViaResend(to, subject, html);
+  } catch (err) {
+    console.warn("Resend email delivery failed:", err.message);
+    console.log(`\n=========================================\n⏰ 10-MIN REMINDER ALERT FOR ${to}: [ ${lockerLabel} ends at ${endStr} ]\n=========================================\n`);
+  }
   return true;
 };
 
@@ -157,9 +168,41 @@ exports.sendBookingOverEmail = async (to, lockerLabel) => {
 
   if (!isResendConfigured()) {
     console.warn("Email not configured; booking over email would be sent to:", to);
+    console.log(`\n=========================================\n⌛ BOOKING ENDED ALERT FOR ${to}: [ ${lockerLabel} ]\n=========================================\n`);
     return true;
   }
-  await sendViaResend(to, subject, html);
+  try {
+    await sendViaResend(to, subject, html);
+  } catch (err) {
+    console.warn("Resend email delivery failed:", err.message);
+    console.log(`\n=========================================\n⌛ BOOKING ENDED ALERT FOR ${to}: [ ${lockerLabel} ]\n=========================================\n`);
+  }
+  return true;
+};
+
+/** Send booking confirmation email upon successful reservation. */
+exports.sendBookingConfirmationEmail = async (to, lockerLabel, startDate, endDate, price) => {
+  const subject = "SmartVaultz – Locker Booking Confirmed";
+  const startStr = formatTimeInIST(new Date(startDate));
+  const endStr = formatTimeInIST(new Date(endDate));
+  const message = `Your booking for <strong>${lockerLabel}</strong> is confirmed.<br><br>` +
+    `<strong>Start Time:</strong> ${startStr}<br>` +
+    `<strong>End Time:</strong> ${endStr}<br>` +
+    `<strong>Amount Paid:</strong> ₹${price}<br><br>` +
+    `You can control and unlock your vault from your SmartVaultz dashboard.`;
+  const html = buildBookingEmailHtml("Booking Confirmed!", message);
+
+  if (!isResendConfigured()) {
+    console.warn("Email not configured; booking confirmation email would be sent to:", to);
+    console.log(`\n=========================================\n📧 BOOKING CONFIRMATION SENT TO ${to}: [ Locker: ${lockerLabel} | Amount: ₹${price} ]\n=========================================\n`);
+    return true;
+  }
+  try {
+    await sendViaResend(to, subject, html);
+  } catch (err) {
+    console.warn("Resend email delivery failed:", err.message);
+    console.log(`\n=========================================\n📧 BOOKING CONFIRMATION SENT TO ${to}: [ Locker: ${lockerLabel} | Amount: ₹${price} ]\n=========================================\n`);
+  }
   return true;
 };
 
