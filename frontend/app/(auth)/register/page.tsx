@@ -15,11 +15,12 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
+  const [devCode, setDevCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [otpNotice, setOtpNotice] = useState<string | null>(null);
 
-  const handleRequestOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleRequestOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setError(null);
 
     if (!name.trim() || !email.trim() || !password) {
@@ -30,6 +31,10 @@ export default function RegisterPage() {
     try {
       const res = await sendOtp({ email, type: "signup" });
       setOtpNotice(res.message + (res.checkSpamNotice ? ` (${res.checkSpamNotice})` : ""));
+      if (res.devOtp) {
+        setDevCode(res.devOtp);
+        setOtp(res.devOtp);
+      }
       setStep("otp");
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } } };
@@ -40,6 +45,11 @@ export default function RegisterPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!otp.trim()) {
+      setError("Please enter the 6-digit OTP code sent to your email.");
+      return;
+    }
 
     try {
       await register({ name, email, password, otp });
@@ -145,16 +155,33 @@ export default function RegisterPage() {
         ) : (
           <form onSubmit={handleRegister} className="space-y-5">
             {otpNotice && (
-              <div className="flex items-center gap-2 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs">
-                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                <span>{otpNotice}</span>
+              <div className="flex flex-col gap-1 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                  <span>{otpNotice}</span>
+                </div>
+                {devCode && (
+                  <div className="mt-2 p-2 bg-emerald-950/80 border border-emerald-500/40 rounded-lg text-center font-mono text-sm text-emerald-300 font-bold tracking-widest">
+                    🔑 Local Dev OTP: {devCode}
+                  </div>
+                )}
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-2 uppercase tracking-wider">
-                6-Digit Verification OTP
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                  6-Digit Verification OTP
+                </label>
+                <button
+                  type="button"
+                  onClick={() => handleRequestOtp()}
+                  disabled={isSendingOtp}
+                  className="text-xs text-emerald-400 hover:underline font-semibold"
+                >
+                  {isSendingOtp ? "Sending..." : "Resend OTP"}
+                </button>
+              </div>
               <input
                 type="text"
                 maxLength={6}

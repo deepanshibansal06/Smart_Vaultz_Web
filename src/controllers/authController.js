@@ -37,6 +37,7 @@ exports.sendOtp = async (req, res) => {
     res.json({
       message: "OTP sent to your email",
       checkSpamNotice: sendMail.getSpamNotice(),
+      devOtp: process.env.NODE_ENV !== "production" ? otp : undefined,
     });
   } catch (err) {
     console.error("Send OTP error:", err);
@@ -73,13 +74,16 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: "Name, email and password are required" });
     }
     const emailNorm = email.trim().toLowerCase();
-    if (otp != null && String(otp).trim() !== "") {
-      const stored = otpStore.get(emailNorm, "signup");
-      if (!stored || stored !== String(otp).trim()) {
-        return res.status(400).json({ message: "Invalid or expired OTP" });
-      }
-      otpStore.consume(emailNorm, "signup");
+
+    if (!otp || String(otp).trim() === "") {
+      return res.status(400).json({ message: "OTP code is required to complete registration" });
     }
+
+    const stored = otpStore.get(emailNorm, "signup");
+    if (!stored || stored !== String(otp).trim()) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+    otpStore.consume(emailNorm, "signup");
 
     const hash = await bcrypt.hash(password, 10);
 

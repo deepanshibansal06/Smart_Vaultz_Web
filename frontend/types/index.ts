@@ -67,4 +67,5 @@ export interface MpinVerifyResponse {
 export interface OtpResponse {
   message: string;
   checkSpamNotice?: string;
+  devOtp?: string;
 }

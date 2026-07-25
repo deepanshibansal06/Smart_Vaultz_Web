@@ -67,6 +67,36 @@ function buildOtpEmailHtml(otp, purpose) {
 </html>`;
 }
 
+function isEmailConfigured() {
+  return (
+    (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim().length > 0) ||
+    (process.env.SMTP_USER && process.env.SMTP_PASS) ||
+    (process.env.GMAIL_USER && process.env.GMAIL_PASS)
+  );
+}
+
+async function sendViaSmtp(to, subject, html) {
+  const nodemailer = require("nodemailer");
+  const user = process.env.SMTP_USER || process.env.GMAIL_USER;
+  const pass = process.env.SMTP_PASS || process.env.GMAIL_PASS;
+  const host = process.env.SMTP_HOST || "smtp.gmail.com";
+  const port = Number(process.env.SMTP_PORT) || 465;
+
+  const transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: { user, pass },
+  });
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM || `SmartVaultz <${user}>`,
+    to: to.trim().toLowerCase(),
+    subject,
+    html,
+  });
+}
+
 async function sendViaResend(to, subject, html) {
   const { Resend } = require("resend");
   const resend = new Resend(process.env.RESEND_API_KEY.trim());
@@ -80,6 +110,53 @@ async function sendViaResend(to, subject, html) {
   if (error) throw new Error(error.message || "Resend send failed");
 }
 
+let etherealAccount = null;
+
+async function sendViaEthereal(to, subject, html) {
+  const nodemailer = require("nodemailer");
+  if (!etherealAccount) {
+    etherealAccount = await nodemailer.createTestAccount();
+  }
+  const transporter = nodemailer.createTransport({
+    host: etherealAccount.smtp.host,
+    port: etherealAccount.smtp.port,
+    secure: etherealAccount.smtp.secure,
+    auth: {
+      user: etherealAccount.user,
+      pass: etherealAccount.pass,
+    },
+  });
+
+  const info = await transporter.sendMail({
+    from: `SmartVaultz <${etherealAccount.user}>`,
+    to: to.trim().toLowerCase(),
+    subject,
+    html,
+  });
+
+  const previewUrl = nodemailer.getTestMessageUrl(info);
+  console.log(`\n=========================================`);
+  console.log(`📧 ETHEREAL WEBMAIL DELIVERED TO: ${to}`);
+  console.log(`🔗 VIEW EMAIL IN BROWSER: ${previewUrl}`);
+  console.log(`=========================================\n`);
+  return previewUrl;
+}
+
+async function dispatchEmail(to, subject, html) {
+  if (process.env.SMTP_USER || process.env.GMAIL_USER) {
+    return await sendViaSmtp(to, subject, html);
+  }
+  if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim().length > 0) {
+    try {
+      return await sendViaResend(to, subject, html);
+    } catch (err) {
+      console.warn("Resend API key failed, falling back to Ethereal Webmail:", err.message);
+      return await sendViaEthereal(to, subject, html);
+    }
+  }
+  return await sendViaEthereal(to, subject, html);
+}
+
 exports.sendOtpEmail = async (to, otp, purpose = "verification") => {
   const subject =
     purpose === "forgot"
@@ -87,15 +164,10 @@ exports.sendOtpEmail = async (to, otp, purpose = "verification") => {
       : "SmartVaultz – Verify your email";
   const html = buildOtpEmailHtml(otp, purpose);
 
-  if (!isResendConfigured()) {
-    console.warn("Email not configured (set RESEND_API_KEY); OTP is:", otp);
-    return true;
-  }
-
   try {
-    await sendViaResend(to, subject, html);
+    await dispatchEmail(to, subject, html);
   } catch (err) {
-    console.warn("Resend email delivery failed:", err.message);
+    console.warn("Email delivery failed:", err.message);
     console.log(`\n=========================================\n🔑 VERIFICATION OTP FOR ${to}: [ ${otp} ]\n=========================================\n`);
   }
   return true;
@@ -146,15 +218,10 @@ exports.sendBookingReminderEmail = async (to, lockerLabel, endTime) => {
   const message = `Your locker booking (${lockerLabel}) ends in about <strong>10 minutes</strong> (by ${endStr}). Please collect your items and close the locker before time runs out.`;
   const html = buildBookingEmailHtml("10 minutes left", message);
 
-  if (!isResendConfigured()) {
-    console.warn("Email not configured; booking reminder would be sent to:", to);
-    console.log(`\n=========================================\n⏰ 10-MIN REMINDER ALERT FOR ${to}: [ ${lockerLabel} ends at ${endStr} ]\n=========================================\n`);
-    return true;
-  }
   try {
-    await sendViaResend(to, subject, html);
+    await dispatchEmail(to, subject, html);
   } catch (err) {
-    console.warn("Resend email delivery failed:", err.message);
+    console.warn("Email delivery failed:", err.message);
     console.log(`\n=========================================\n⏰ 10-MIN REMINDER ALERT FOR ${to}: [ ${lockerLabel} ends at ${endStr} ]\n=========================================\n`);
   }
   return true;
@@ -166,15 +233,10 @@ exports.sendBookingOverEmail = async (to, lockerLabel) => {
   const message = `Your booking for <strong>${lockerLabel}</strong> is now over. You have been removed from access to this locker. Thank you for using SmartVaultz.`;
   const html = buildBookingEmailHtml("Booking ended", message);
 
-  if (!isResendConfigured()) {
-    console.warn("Email not configured; booking over email would be sent to:", to);
-    console.log(`\n=========================================\n⌛ BOOKING ENDED ALERT FOR ${to}: [ ${lockerLabel} ]\n=========================================\n`);
-    return true;
-  }
   try {
-    await sendViaResend(to, subject, html);
+    await dispatchEmail(to, subject, html);
   } catch (err) {
-    console.warn("Resend email delivery failed:", err.message);
+    console.warn("Email delivery failed:", err.message);
     console.log(`\n=========================================\n⌛ BOOKING ENDED ALERT FOR ${to}: [ ${lockerLabel} ]\n=========================================\n`);
   }
   return true;
@@ -192,15 +254,10 @@ exports.sendBookingConfirmationEmail = async (to, lockerLabel, startDate, endDat
     `You can control and unlock your vault from your SmartVaultz dashboard.`;
   const html = buildBookingEmailHtml("Booking Confirmed!", message);
 
-  if (!isResendConfigured()) {
-    console.warn("Email not configured; booking confirmation email would be sent to:", to);
-    console.log(`\n=========================================\n📧 BOOKING CONFIRMATION SENT TO ${to}: [ Locker: ${lockerLabel} | Amount: ₹${price} ]\n=========================================\n`);
-    return true;
-  }
   try {
-    await sendViaResend(to, subject, html);
+    await dispatchEmail(to, subject, html);
   } catch (err) {
-    console.warn("Resend email delivery failed:", err.message);
+    console.warn("Email delivery failed:", err.message);
     console.log(`\n=========================================\n📧 BOOKING CONFIRMATION SENT TO ${to}: [ Locker: ${lockerLabel} | Amount: ₹${price} ]\n=========================================\n`);
   }
   return true;

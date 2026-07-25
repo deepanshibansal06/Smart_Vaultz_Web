@@ -7,10 +7,11 @@ async function start() {
   const mongod = await MongoMemoryServer.create({
     instance: {
       dbName: "smart_vault",
+      args: ["--nounixsocket"],
     },
   });
 
-  const uri = mongod.getUri();
+  const uri = mongod.getUri("smart_vault");
   process.env.MONGO_URI = uri;
   console.log(`Local MongoDB running at: ${uri}`);
 
