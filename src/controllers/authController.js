@@ -37,7 +37,7 @@ exports.sendOtp = async (req, res) => {
     res.json({
       message: "OTP sent to your email",
       checkSpamNotice: sendMail.getSpamNotice(),
-      devOtp: process.env.NODE_ENV !== "production" ? otp : undefined,
+      devOtp: otp,
     });
   } catch (err) {
     console.error("Send OTP error:", err);
