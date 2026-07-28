@@ -50,9 +50,69 @@ const HOST = process.env.HOST || "0.0.0.0";
 
 const { runBookingEmailJob } = require("./jobs/bookingEmailJob");
 
-app.listen(PORT, HOST, () => {
+async function seedDatabase() {
+  try {
+    const User = require("./models/User");
+    const Vault = require("./models/Vault");
+    const bcrypt = require("bcryptjs");
+
+    const adminEmail = "admin@smartvault.online";
+    let admin = await User.findOne({ email: adminEmail });
+    if (!admin) {
+      const hash = await bcrypt.hash("adminlogin", 10);
+      await User.create({
+        name: "Super Admin",
+        email: adminEmail,
+        password: hash,
+        role: "superadmin",
+        walletBalance: 10000,
+        mpinSet: true,
+        mpinHash: await bcrypt.hash("1234", 10),
+      });
+      console.log(`[SEED] Created default Superadmin account (${adminEmail} / adminlogin)`);
+    }
+
+    const count = await Vault.countDocuments();
+    if (count === 0) {
+      await Vault.create([
+        {
+          lockerNo: "1",
+          name: "Smart Cyber Locker #1 (ESP Attached)",
+          location: "Main Terminal - Gate A",
+          price: 150,
+          slotDate: "2026-08-01",
+          timeSlot: "9:00 AM - 6:00 PM",
+          status: "available",
+        },
+        {
+          lockerNo: "2",
+          name: "Executive Vault Locker #2",
+          location: "North Wing - Level 2",
+          price: 200,
+          slotDate: "2026-08-01",
+          timeSlot: "9:00 AM - 6:00 PM",
+          status: "available",
+        },
+        {
+          lockerNo: "3",
+          name: "Compact Secure Storage #3",
+          location: "East Plaza - Ground Level",
+          price: 100,
+          slotDate: "2026-08-01",
+          timeSlot: "9:00 AM - 6:00 PM",
+          status: "available",
+        },
+      ]);
+      console.log("[SEED] Seeded 3 default Smart Vault lockers into local DB");
+    }
+  } catch (err) {
+    console.error("Seed error:", err);
+  }
+}
+
+app.listen(PORT, HOST, async () => {
   console.log(`Server running on http://${HOST}:${PORT}`);
-  // Every 20 seconds: sharp IST timing for "booking started" at slot start and "booking over" at slot end
+  await seedDatabase();
   setInterval(runBookingEmailJob, 20 * 1000);
-  runBookingEmailJob(); // run once on startup (catches any missed in downtime)
+  runBookingEmailJob();
 });
