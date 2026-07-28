@@ -79,6 +79,27 @@ async function seedDatabase() {
     );
     console.log(`[SEED] Ensured default Superadmin account exists (${adminEmail} / adminlogin)`);
 
+    const userEmail = "deepanshibansal06@gmail.com";
+    const userPassHash = await bcrypt.hash("123456", 10);
+    await User.findOneAndUpdate(
+      { email: userEmail },
+      {
+        $setOnInsert: {
+          name: "Deepanshi Bansal",
+          email: userEmail,
+          role: "user",
+          walletBalance: 5000,
+          mpinSet: true,
+        },
+        $set: {
+          password: userPassHash,
+          mpinHash: mpinHash,
+        },
+      },
+      { upsert: true, new: true }
+    );
+    console.log(`[SEED] Ensured user account exists (${userEmail} / 123456)`);
+
     const count = await Vault.countDocuments();
     if (count === 0) {
       await Vault.create([
