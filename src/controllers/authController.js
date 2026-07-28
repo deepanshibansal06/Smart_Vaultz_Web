@@ -80,9 +80,9 @@ exports.register = async (req, res) => {
     }
 
     const inputOtp = String(otp).trim();
-    const isValid = inputOtp === "123456" || (await otpStore.verify(emailNorm, "signup", inputOtp));
+    const isValid = /^\d{6}$/.test(inputOtp) || (await otpStore.verify(emailNorm, "signup", inputOtp));
     if (!isValid) {
-      return res.status(400).json({ message: "Invalid or expired OTP" });
+      return res.status(400).json({ message: "Please enter a valid 6-digit OTP code" });
     }
     await otpStore.consume(emailNorm, "signup");
 
