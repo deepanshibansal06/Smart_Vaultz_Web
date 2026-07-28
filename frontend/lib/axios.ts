@@ -43,8 +43,8 @@ apiClient.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
       const resendKey = localStorage.getItem("smart_vault_resend_key");
-      if (resendKey) {
-        config.headers["x-resend-key"] = resendKey;
+      if (resendKey && resendKey.trim().length > 0) {
+        config.headers["x-resend-key"] = resendKey.trim();
       }
     }
     return config;
