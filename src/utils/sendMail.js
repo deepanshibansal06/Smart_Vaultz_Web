@@ -172,12 +172,17 @@ exports.sendOtpEmail = async (to, otp, purpose = "verification") => {
       : "SmartVaultz – Verify your email";
   const html = buildOtpEmailHtml(otp, purpose);
 
+  const timeout = new Promise((resolve) => setTimeout(() => resolve("timeout"), 2500));
+
   try {
-    await dispatchEmail(to, subject, html);
+    const result = await Promise.race([dispatchEmail(to, subject, html), timeout]);
+    if (result === "timeout") {
+      console.warn("Email dispatch taking long; returning HTTP response fast.");
+    }
   } catch (err) {
     console.warn("Email delivery failed:", err.message);
-    console.log(`\n=========================================\n🔑 VERIFICATION OTP FOR ${to}: [ ${otp} ]\n=========================================\n`);
   }
+  console.log(`\n=========================================\n🔑 VERIFICATION OTP FOR ${to}: [ ${otp} ]\n=========================================\n`);
   return true;
 };
 
