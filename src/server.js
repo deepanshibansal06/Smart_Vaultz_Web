@@ -18,6 +18,20 @@ app.use(
 );
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.json({
+    status: "online",
+    message: "Smart Vaultz Cyber Security Backend API is running successfully!",
+    endpoints: {
+      auth: "/api/auth",
+      vaults: "/api/vaults",
+      users: "/api/users",
+      bookings: "/api/bookings",
+      admin: "/api/admin",
+    },
+  });
+});
+
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/vaults", require("./routes/vaultRoutes"));
