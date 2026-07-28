@@ -31,7 +31,11 @@ export default function LoginPage() {
       }
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } } };
-      setError(errorObj.response?.data?.message || "Invalid credentials. Please try again.");
+      if (!errorObj.response) {
+        setError("Unable to connect to backend server. Please check Vercel NEXT_PUBLIC_API_BASE_URL environment variable.");
+      } else {
+        setError(errorObj.response?.data?.message || "Invalid credentials. Please try again.");
+      }
     }
   };
 
