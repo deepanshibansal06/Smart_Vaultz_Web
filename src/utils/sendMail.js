@@ -85,16 +85,23 @@ async function sendViaSmtp(to, subject, html) {
   const pass = process.env.SMTP_PASS || process.env.GMAIL_PASS || DEFAULT_GMAIL_PASS;
 
   const transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,
     auth: { user, pass },
+    tls: {
+      rejectUnauthorized: false
+    }
   });
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM || `SmartVaultz <${user}>`,
+  const info = await transporter.sendMail({
+    from: `SmartVaultz <${user}>`,
     to: to.trim().toLowerCase(),
     subject,
     html,
   });
+  console.log(`[SMTP] Email successfully delivered to ${to}:`, info.messageId);
+  return info;
 }
 
 async function sendViaResend(to, subject, html) {
@@ -149,14 +156,14 @@ async function sendViaEthereal(to, subject, html) {
 
 async function dispatchEmail(to, subject, html) {
   try {
-    return await sendViaResend(to, subject, html);
-  } catch (err) {
-    console.warn("Resend API failed, trying Gmail SMTP:", err.message);
-  }
-  try {
     return await sendViaSmtp(to, subject, html);
   } catch (err) {
-    console.warn("Gmail SMTP delivery failed, trying Ethereal Webmail:", err.message);
+    console.warn("Gmail SMTP delivery failed, trying Resend API:", err.message);
+  }
+  try {
+    return await sendViaResend(to, subject, html);
+  } catch (err) {
+    console.warn("Resend API failed, trying Ethereal Webmail:", err.message);
   }
   try {
     return await sendViaEthereal(to, subject, html);
