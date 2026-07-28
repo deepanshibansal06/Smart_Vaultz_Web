@@ -57,20 +57,27 @@ async function seedDatabase() {
     const bcrypt = require("bcryptjs");
 
     const adminEmail = "admin@smartvault.online";
-    let admin = await User.findOne({ email: adminEmail });
-    if (!admin) {
-      const hash = await bcrypt.hash("adminlogin", 10);
-      await User.create({
-        name: "Super Admin",
-        email: adminEmail,
-        password: hash,
-        role: "superadmin",
-        walletBalance: 10000,
-        mpinSet: true,
-        mpinHash: await bcrypt.hash("1234", 10),
-      });
-      console.log(`[SEED] Created default Superadmin account (${adminEmail} / adminlogin)`);
-    }
+    const hash = await bcrypt.hash("adminlogin", 10);
+    const mpinHash = await bcrypt.hash("1234", 10);
+
+    await User.findOneAndUpdate(
+      { email: adminEmail },
+      {
+        $setOnInsert: {
+          name: "Super Admin",
+          email: adminEmail,
+          role: "superadmin",
+          walletBalance: 10000,
+          mpinSet: true,
+        },
+        $set: {
+          password: hash,
+          mpinHash: mpinHash,
+        },
+      },
+      { upsert: true, new: true }
+    );
+    console.log(`[SEED] Ensured default Superadmin account exists (${adminEmail} / adminlogin)`);
 
     const count = await Vault.countDocuments();
     if (count === 0) {
