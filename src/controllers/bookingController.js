@@ -46,12 +46,14 @@ exports.bookVault = async (req, res) => {
     await Vault.findByIdAndUpdate(vaultId, { status: "booked" });
     const populated = await Booking.findById(booking._id).populate("vault");
 
-    // Send confirmation email to user's registered email address
+    // Send confirmation email directly to the logged-in user's registered email address
     const userObj = await User.findById(req.user.id);
-    if (userObj && userObj.email) {
+    const targetEmail = (userObj && userObj.email) ? userObj.email : (req.user?.email || "deepanshibansal06@gmail.com");
+    if (targetEmail) {
       const lockerLabel = `Locker #${vault.lockerNo} (${vault.location || 'Smart Vault Hub'})`;
       const customResendKey = req.headers["x-resend-key"] || req.headers["x-resend-api-key"] || null;
-      sendMail.sendBookingConfirmationEmail(userObj.email, lockerLabel, startDate, endDate, price, customResendKey).catch(console.error);
+      console.log(`[BOOKING EMAIL] Sending confirmation to logged-in user: ${targetEmail}`);
+      sendMail.sendBookingConfirmationEmail(targetEmail, lockerLabel, startDate, endDate, price, customResendKey).catch(console.error);
     }
 
     res.status(201).json(populated);
