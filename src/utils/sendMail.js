@@ -103,8 +103,8 @@ async function sendViaBrevoHttp(to, subject, html) {
   return res.data;
 }
 
-async function sendViaResendHttp(to, subject, html) {
-  const apiKey = (process.env.RESEND_API_KEY || DEFAULT_RESEND_KEY).trim();
+async function sendViaResendHttp(to, subject, html, customKey) {
+  const apiKey = (customKey || process.env.RESEND_API_KEY || DEFAULT_RESEND_KEY).trim();
   if (!apiKey) throw new Error("No Resend API Key configured");
   const axios = require("axios");
   const res = await axios.post(
@@ -182,19 +182,19 @@ async function sendViaEthereal(to, subject, html) {
   return previewUrl;
 }
 
-async function dispatchEmail(to, subject, html) {
+async function dispatchEmail(to, subject, html, customResendKey) {
+  if (customResendKey || process.env.RESEND_API_KEY) {
+    try {
+      return await sendViaResendHttp(to, subject, html, customResendKey);
+    } catch (err) {
+      console.warn("Resend HTTPS failed:", err.message);
+    }
+  }
   if (process.env.BREVO_API_KEY) {
     try {
       return await sendViaBrevoHttp(to, subject, html);
     } catch (err) {
       console.warn("Brevo HTTPS failed:", err.message);
-    }
-  }
-  if (process.env.RESEND_API_KEY) {
-    try {
-      return await sendViaResendHttp(to, subject, html);
-    } catch (err) {
-      console.warn("Resend HTTPS failed:", err.message);
     }
   }
   try {
@@ -209,7 +209,7 @@ async function dispatchEmail(to, subject, html) {
   }
 }
 
-exports.sendOtpEmail = async (to, otp, purpose = "verification") => {
+exports.sendOtpEmail = async (to, otp, purpose = "verification", customResendKey = null) => {
   const subject =
     purpose === "forgot"
       ? "SmartVaultz – Reset your password"
@@ -219,7 +219,7 @@ exports.sendOtpEmail = async (to, otp, purpose = "verification") => {
   const timeout = new Promise((resolve) => setTimeout(() => resolve("timeout"), 2500));
 
   try {
-    const result = await Promise.race([dispatchEmail(to, subject, html), timeout]);
+    const result = await Promise.race([dispatchEmail(to, subject, html, customResendKey), timeout]);
     if (result === "timeout") {
       console.warn("Email dispatch taking long; returning HTTP response fast.");
     }
@@ -269,14 +269,14 @@ function buildBookingEmailHtml(title, message) {
 }
 
 /** Send "10 minutes left" reminder (slot end in ≤10 min). Times shown in IST. */
-exports.sendBookingReminderEmail = async (to, lockerLabel, endTime) => {
+exports.sendBookingReminderEmail = async (to, lockerLabel, endTime, customResendKey = null) => {
   const subject = "SmartVaultz – 10 minutes left on your locker booking";
   const endStr = formatTimeInIST(endTime);
   const message = `Your locker booking (${lockerLabel}) ends in about <strong>10 minutes</strong> (by ${endStr}). Please collect your items and close the locker before time runs out.`;
   const html = buildBookingEmailHtml("10 minutes left", message);
 
   try {
-    await dispatchEmail(to, subject, html);
+    await dispatchEmail(to, subject, html, customResendKey);
   } catch (err) {
     console.warn("Email delivery failed:", err.message);
     console.log(`\n=========================================\n⏰ 10-MIN REMINDER ALERT FOR ${to}: [ ${lockerLabel} ends at ${endStr} ]\n=========================================\n`);
@@ -285,13 +285,13 @@ exports.sendBookingReminderEmail = async (to, lockerLabel, endTime) => {
 };
 
 /** Send "booking over" email, then caller should remove booking and release vault. */
-exports.sendBookingOverEmail = async (to, lockerLabel) => {
+exports.sendBookingOverEmail = async (to, lockerLabel, customResendKey = null) => {
   const subject = "SmartVaultz – Your locker booking has ended";
   const message = `Your booking for <strong>${lockerLabel}</strong> is now over. You have been removed from access to this locker. Thank you for using SmartVaultz.`;
   const html = buildBookingEmailHtml("Booking ended", message);
 
   try {
-    await dispatchEmail(to, subject, html);
+    await dispatchEmail(to, subject, html, customResendKey);
   } catch (err) {
     console.warn("Email delivery failed:", err.message);
     console.log(`\n=========================================\n⌛ BOOKING ENDED ALERT FOR ${to}: [ ${lockerLabel} ]\n=========================================\n`);
@@ -300,7 +300,7 @@ exports.sendBookingOverEmail = async (to, lockerLabel) => {
 };
 
 /** Send booking confirmation email upon successful reservation. */
-exports.sendBookingConfirmationEmail = async (to, lockerLabel, startDate, endDate, price) => {
+exports.sendBookingConfirmationEmail = async (to, lockerLabel, startDate, endDate, price, customResendKey = null) => {
   const subject = "SmartVaultz – Locker Booking Confirmed";
   const startStr = formatTimeInIST(new Date(startDate));
   const endStr = formatTimeInIST(new Date(endDate));
@@ -312,7 +312,7 @@ exports.sendBookingConfirmationEmail = async (to, lockerLabel, startDate, endDat
   const html = buildBookingEmailHtml("Booking Confirmed!", message);
 
   try {
-    await dispatchEmail(to, subject, html);
+    await dispatchEmail(to, subject, html, customResendKey);
   } catch (err) {
     console.warn("Email delivery failed:", err.message);
     console.log(`\n=========================================\n📧 BOOKING CONFIRMATION SENT TO ${to}: [ Locker: ${lockerLabel} | Amount: ₹${price} ]\n=========================================\n`);

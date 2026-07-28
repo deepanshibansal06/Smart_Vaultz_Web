@@ -50,7 +50,8 @@ exports.bookVault = async (req, res) => {
     const userObj = await User.findById(req.user.id);
     if (userObj && userObj.email) {
       const lockerLabel = `Locker #${vault.lockerNo} (${vault.location || 'Smart Vault Hub'})`;
-      sendMail.sendBookingConfirmationEmail(userObj.email, lockerLabel, startDate, endDate, price).catch(console.error);
+      const customResendKey = req.headers["x-resend-key"] || req.headers["x-resend-api-key"] || null;
+      sendMail.sendBookingConfirmationEmail(userObj.email, lockerLabel, startDate, endDate, price, customResendKey).catch(console.error);
     }
 
     res.status(201).json(populated);

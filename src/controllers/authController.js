@@ -33,7 +33,8 @@ exports.sendOtp = async (req, res) => {
     }
     const otp = generateOtp();
     await otpStore.set(emailNorm, type, otp);
-    await sendMail.sendOtpEmail(emailNorm, otp, type);
+    const customResendKey = req.headers["x-resend-key"] || req.headers["x-resend-api-key"] || null;
+    await sendMail.sendOtpEmail(emailNorm, otp, type, customResendKey);
     res.json({
       message: "OTP sent to your email",
       checkSpamNotice: sendMail.getSpamNotice(),

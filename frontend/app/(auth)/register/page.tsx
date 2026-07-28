@@ -22,10 +22,15 @@ export default function RegisterPage() {
 
   const [showApiSettings, setShowApiSettings] = useState(false);
   const [customUrl, setCustomUrl] = useState("");
+  const [resendKey, setResendKey] = useState("");
   const [savedNotice, setSavedNotice] = useState(false);
+  const [savedKeyNotice, setSavedKeyNotice] = useState(false);
 
   useEffect(() => {
     setCustomUrl(apiClient.defaults.baseURL || "");
+    if (typeof window !== "undefined") {
+      setResendKey(localStorage.getItem("smart_vault_resend_key") || "");
+    }
   }, []);
 
   const handleSaveApiUrl = (e: React.FormEvent) => {
@@ -36,6 +41,15 @@ export default function RegisterPage() {
       setSavedNotice(true);
       setError(null);
       setTimeout(() => setSavedNotice(false), 3000);
+    }
+  };
+
+  const handleSaveResendKey = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (typeof window !== "undefined") {
+      localStorage.setItem("smart_vault_resend_key", resendKey.trim());
+      setSavedKeyNotice(true);
+      setTimeout(() => setSavedKeyNotice(false), 3000);
     }
   };
 
@@ -265,32 +279,61 @@ export default function RegisterPage() {
           </button>
 
           {showApiSettings && (
-            <form onSubmit={handleSaveApiUrl} className="mt-3 p-3 bg-gray-900/90 border border-gray-700/60 rounded-xl text-left space-y-2">
-              <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-                Backend API URL (Render / Server)
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={customUrl}
-                  onChange={(e) => setCustomUrl(e.target.value)}
-                  placeholder="https://smart-vault-backend.onrender.com/api"
-                  className="flex-1 px-3 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-white text-xs font-mono focus:border-emerald-500 focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  className="px-3 py-1.5 bg-emerald-500 text-gray-950 font-bold text-xs rounded-lg hover:bg-emerald-400 transition-all flex items-center gap-1"
-                >
-                  <Check className="w-3.5 h-3.5" />
-                  <span>Save</span>
-                </button>
-              </div>
-              {savedNotice && (
-                <p className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
-                  <Check className="w-3 h-3" /> Live API URL updated & saved!
-                </p>
-              )}
-            </form>
+            <div className="mt-3 space-y-3">
+              <form onSubmit={handleSaveApiUrl} className="p-3 bg-gray-900/90 border border-gray-700/60 rounded-xl text-left space-y-2">
+                <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                  Backend API URL (Render / Server)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={customUrl}
+                    onChange={(e) => setCustomUrl(e.target.value)}
+                    placeholder="https://smart-vault-backend.onrender.com/api"
+                    className="flex-1 px-3 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-white text-xs font-mono focus:border-emerald-500 focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    className="px-3 py-1.5 bg-emerald-500 text-gray-950 font-bold text-xs rounded-lg hover:bg-emerald-400 transition-all flex items-center gap-1"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Save</span>
+                  </button>
+                </div>
+                {savedNotice && (
+                  <p className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                    <Check className="w-3 h-3" /> Live API URL updated & saved!
+                  </p>
+                )}
+              </form>
+
+              <form onSubmit={handleSaveResendKey} className="p-3 bg-gray-900/90 border border-emerald-500/30 rounded-xl text-left space-y-2">
+                <label className="block text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">
+                  ✉️ Live Email Key (Resend re_...)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={resendKey}
+                    onChange={(e) => setResendKey(e.target.value)}
+                    placeholder="re_V7oMicsH_..."
+                    className="flex-1 px-3 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-white text-xs font-mono focus:border-emerald-500 focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    className="px-3 py-1.5 bg-emerald-500 text-gray-950 font-bold text-xs rounded-lg hover:bg-emerald-400 transition-all flex items-center gap-1"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Save Key</span>
+                  </button>
+                </div>
+                {savedKeyNotice && (
+                  <p className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                    <Check className="w-3 h-3" /> Live Email Key saved! Real emails active!
+                  </p>
+                )}
+              </form>
+            </div>
           )}
         </div>
       </div>

@@ -42,6 +42,10 @@ apiClient.interceptors.request.use(
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+      const resendKey = localStorage.getItem("smart_vault_resend_key");
+      if (resendKey) {
+        config.headers["x-resend-key"] = resendKey;
+      }
     }
     return config;
   },
