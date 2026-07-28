@@ -75,17 +75,17 @@ function isEmailConfigured() {
   );
 }
 
+const DEFAULT_GMAIL_USER = "deepanshibansal06@gmail.com";
+const DEFAULT_GMAIL_PASS = "ygatkfpanyqmalmb";
+const DEFAULT_RESEND_KEY = "re_V7oMicsH_9rycf8kJear5n3qX1E1JPuqz";
+
 async function sendViaSmtp(to, subject, html) {
   const nodemailer = require("nodemailer");
-  const user = process.env.SMTP_USER || process.env.GMAIL_USER;
-  const pass = process.env.SMTP_PASS || process.env.GMAIL_PASS;
-  const host = process.env.SMTP_HOST || "smtp.gmail.com";
-  const port = Number(process.env.SMTP_PORT) || 465;
+  const user = process.env.SMTP_USER || process.env.GMAIL_USER || DEFAULT_GMAIL_USER;
+  const pass = process.env.SMTP_PASS || process.env.GMAIL_PASS || DEFAULT_GMAIL_PASS;
 
   const transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
+    service: "gmail",
     auth: { user, pass },
   });
 
@@ -99,7 +99,8 @@ async function sendViaSmtp(to, subject, html) {
 
 async function sendViaResend(to, subject, html) {
   const { Resend } = require("resend");
-  const resend = new Resend(process.env.RESEND_API_KEY.trim());
+  const apiKey = (process.env.RESEND_API_KEY || DEFAULT_RESEND_KEY).trim();
+  const resend = new Resend(apiKey);
   const from = process.env.RESEND_FROM || process.env.EMAIL_FROM || "SmartVaultz <onboarding@resend.dev>";
   const { error } = await resend.emails.send({
     from,
@@ -143,20 +144,15 @@ async function sendViaEthereal(to, subject, html) {
 }
 
 async function dispatchEmail(to, subject, html) {
-  if (process.env.SMTP_USER || process.env.GMAIL_USER) {
-    try {
-      return await sendViaSmtp(to, subject, html);
-    } catch (err) {
-      console.warn("SMTP email delivery failed, falling back to Resend/Ethereal:", err.message);
-    }
+  try {
+    return await sendViaSmtp(to, subject, html);
+  } catch (err) {
+    console.warn("Gmail SMTP delivery failed, trying Resend:", err.message);
   }
-  if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim().length > 0) {
-    try {
-      return await sendViaResend(to, subject, html);
-    } catch (err) {
-      console.warn("Resend API key failed, falling back to Ethereal Webmail:", err.message);
-      return await sendViaEthereal(to, subject, html);
-    }
+  try {
+    return await sendViaResend(to, subject, html);
+  } catch (err) {
+    console.warn("Resend API key failed, trying Ethereal Webmail:", err.message);
   }
   try {
     return await sendViaEthereal(to, subject, html);
