@@ -107,24 +107,30 @@ async function sendViaResendHttp(to, subject, html, customKey) {
   const apiKey = (customKey || process.env.RESEND_API_KEY || DEFAULT_RESEND_KEY).trim();
   if (!apiKey) throw new Error("No Resend API Key configured");
   const axios = require("axios");
-  const res = await axios.post(
-    "https://api.resend.com/emails",
-    {
-      from: process.env.RESEND_FROM || "onboarding@resend.dev",
-      to: [to.trim().toLowerCase()],
-      subject,
-      html,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
+  try {
+    const res = await axios.post(
+      "https://api.resend.com/emails",
+      {
+        from: process.env.RESEND_FROM || "onboarding@resend.dev",
+        to: [to.trim().toLowerCase()],
+        subject,
+        html,
       },
-      timeout: 5000,
-    }
-  );
-  console.log(`[RESEND HTTPS] Email successfully delivered to ${to}`);
-  return res.data;
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        timeout: 5000,
+      }
+    );
+    console.log(`[RESEND HTTPS SUCCESS] Email delivered to ${to}:`, res.data);
+    return { success: true, data: res.data };
+  } catch (err) {
+    const errData = err.response ? JSON.stringify(err.response.data) : err.message;
+    console.error(`[RESEND HTTPS ERROR] Failed for ${to}:`, errData);
+    throw new Error(errData);
+  }
 }
 
 async function sendViaSmtp(to, subject, html) {
