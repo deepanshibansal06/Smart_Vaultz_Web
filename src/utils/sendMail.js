@@ -77,7 +77,55 @@ function isEmailConfigured() {
 
 const DEFAULT_GMAIL_USER = "deepanshibansal06@gmail.com";
 const DEFAULT_GMAIL_PASS = "ygatkfpanyqmalmb";
-const DEFAULT_RESEND_KEY = "re_V7oMicsH_9rycf8kJear5n3qX1E1JPuqz";
+const DEFAULT_RESEND_KEY = process.env.RESEND_API_KEY || "";
+
+async function sendViaBrevoHttp(to, subject, html) {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) throw new Error("No Brevo API Key configured");
+  const axios = require("axios");
+  const res = await axios.post(
+    "https://api.brevo.com/v3/smtp/email",
+    {
+      sender: { name: "SmartVaultz", email: process.env.GMAIL_USER || DEFAULT_GMAIL_USER },
+      to: [{ email: to.trim().toLowerCase() }],
+      subject,
+      htmlContent: html,
+    },
+    {
+      headers: {
+        "api-key": apiKey.trim(),
+        "Content-Type": "application/json",
+      },
+      timeout: 5000,
+    }
+  );
+  console.log(`[BREVO HTTPS] Email successfully delivered to ${to}`);
+  return res.data;
+}
+
+async function sendViaResendHttp(to, subject, html) {
+  const apiKey = (process.env.RESEND_API_KEY || DEFAULT_RESEND_KEY).trim();
+  if (!apiKey) throw new Error("No Resend API Key configured");
+  const axios = require("axios");
+  const res = await axios.post(
+    "https://api.resend.com/emails",
+    {
+      from: process.env.RESEND_FROM || "onboarding@resend.dev",
+      to: [to.trim().toLowerCase()],
+      subject,
+      html,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      timeout: 5000,
+    }
+  );
+  console.log(`[RESEND HTTPS] Email successfully delivered to ${to}`);
+  return res.data;
+}
 
 async function sendViaSmtp(to, subject, html) {
   const nodemailer = require("nodemailer");
@@ -85,9 +133,7 @@ async function sendViaSmtp(to, subject, html) {
   const pass = process.env.SMTP_PASS || process.env.GMAIL_PASS || DEFAULT_GMAIL_PASS;
 
   const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false,
+    service: "gmail",
     auth: { user, pass },
     tls: {
       rejectUnauthorized: false
@@ -102,24 +148,6 @@ async function sendViaSmtp(to, subject, html) {
   });
   console.log(`[SMTP] Email successfully delivered to ${to}:`, info.messageId);
   return info;
-}
-
-async function sendViaResend(to, subject, html) {
-  const { Resend } = require("resend");
-  const apiKey = (process.env.RESEND_API_KEY || DEFAULT_RESEND_KEY).trim();
-  const resend = new Resend(apiKey);
-  const { data, error } = await resend.emails.send({
-    from: "onboarding@resend.dev",
-    to: [to.trim().toLowerCase()],
-    subject,
-    html,
-  });
-  if (error) {
-    console.error("Resend API Error:", error);
-    throw new Error(typeof error === "object" ? JSON.stringify(error) : String(error));
-  }
-  console.log(`[RESEND] Email successfully sent to ${to}:`, data);
-  return data;
 }
 
 let etherealAccount = null;
@@ -155,15 +183,24 @@ async function sendViaEthereal(to, subject, html) {
 }
 
 async function dispatchEmail(to, subject, html) {
+  if (process.env.BREVO_API_KEY) {
+    try {
+      return await sendViaBrevoHttp(to, subject, html);
+    } catch (err) {
+      console.warn("Brevo HTTPS failed:", err.message);
+    }
+  }
+  if (process.env.RESEND_API_KEY) {
+    try {
+      return await sendViaResendHttp(to, subject, html);
+    } catch (err) {
+      console.warn("Resend HTTPS failed:", err.message);
+    }
+  }
   try {
     return await sendViaSmtp(to, subject, html);
   } catch (err) {
-    console.warn("Gmail SMTP delivery failed, trying Resend API:", err.message);
-  }
-  try {
-    return await sendViaResend(to, subject, html);
-  } catch (err) {
-    console.warn("Resend API failed, trying Ethereal Webmail:", err.message);
+    console.warn("Gmail SMTP delivery failed:", err.message);
   }
   try {
     return await sendViaEthereal(to, subject, html);
