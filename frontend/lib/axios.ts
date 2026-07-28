@@ -4,8 +4,13 @@ const getInitialBaseUrl = () => {
   if (typeof window !== "undefined") {
     const customUrl = localStorage.getItem("smart_vault_api_url");
     if (customUrl && customUrl.trim().length > 0) return customUrl.trim();
+
+    const host = window.location.hostname;
+    if (host !== "localhost" && host !== "127.0.0.1") {
+      return "https://smart-vault-backend-9cxx.onrender.com/api";
+    }
   }
-  return process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
+  return process.env.NEXT_PUBLIC_API_BASE_URL || "https://smart-vault-backend-9cxx.onrender.com/api";
 };
 
 export const apiClient = axios.create({
