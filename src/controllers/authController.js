@@ -52,8 +52,8 @@ exports.resetPassword = async (req, res) => {
     if (!emailNorm || !otp || !newPassword) {
       return res.status(400).json({ message: "Email, OTP and new password are required" });
     }
-    const stored = await otpStore.get(emailNorm, "forgot");
-    if (!stored || stored !== String(otp).trim()) {
+    const isValid = await otpStore.verify(emailNorm, "forgot", otp);
+    if (!isValid) {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
     const user = await User.findOne({ email: emailNorm });
@@ -79,8 +79,8 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: "OTP code is required to complete registration" });
     }
 
-    const stored = await otpStore.get(emailNorm, "signup");
-    if (!stored || stored !== String(otp).trim()) {
+    const isValid = await otpStore.verify(emailNorm, "signup", otp);
+    if (!isValid) {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
     await otpStore.consume(emailNorm, "signup");
