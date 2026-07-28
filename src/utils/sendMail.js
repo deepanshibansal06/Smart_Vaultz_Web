@@ -144,7 +144,11 @@ async function sendViaEthereal(to, subject, html) {
 
 async function dispatchEmail(to, subject, html) {
   if (process.env.SMTP_USER || process.env.GMAIL_USER) {
-    return await sendViaSmtp(to, subject, html);
+    try {
+      return await sendViaSmtp(to, subject, html);
+    } catch (err) {
+      console.warn("SMTP email delivery failed, falling back to Resend/Ethereal:", err.message);
+    }
   }
   if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim().length > 0) {
     try {
@@ -154,7 +158,11 @@ async function dispatchEmail(to, subject, html) {
       return await sendViaEthereal(to, subject, html);
     }
   }
-  return await sendViaEthereal(to, subject, html);
+  try {
+    return await sendViaEthereal(to, subject, html);
+  } catch (err) {
+    console.warn("Ethereal test mail failed:", err.message);
+  }
 }
 
 exports.sendOtpEmail = async (to, otp, purpose = "verification") => {
