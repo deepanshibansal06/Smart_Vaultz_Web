@@ -1,13 +1,34 @@
 import axios from "axios";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
+const getInitialBaseUrl = () => {
+  if (typeof window !== "undefined") {
+    const customUrl = localStorage.getItem("smart_vault_api_url");
+    if (customUrl && customUrl.trim().length > 0) return customUrl.trim();
+  }
+  return process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
+};
 
 export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: getInitialBaseUrl(),
   headers: {
     "Content-Type": "application/json",
   },
 });
+
+export const setCustomApiUrl = (url: string) => {
+  let formatted = url.trim();
+  if (!formatted.startsWith("http://") && !formatted.startsWith("https://")) {
+    formatted = `https://${formatted}`;
+  }
+  if (!formatted.endsWith("/api")) {
+    formatted = `${formatted.replace(/\/+$/, "")}/api`;
+  }
+  if (typeof window !== "undefined") {
+    localStorage.setItem("smart_vault_api_url", formatted);
+  }
+  apiClient.defaults.baseURL = formatted;
+  return formatted;
+};
 
 apiClient.interceptors.request.use(
   (config) => {

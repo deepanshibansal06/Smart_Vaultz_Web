@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { Lock, Mail, Key, ShieldCheck, ArrowRight, AlertCircle } from "lucide-react";
+import { apiClient, setCustomApiUrl } from "@/lib/axios";
+import { Lock, Mail, Key, ShieldCheck, ArrowRight, AlertCircle, Settings, Check } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,6 +13,25 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const [showApiSettings, setShowApiSettings] = useState(false);
+  const [customUrl, setCustomUrl] = useState("");
+  const [savedNotice, setSavedNotice] = useState(false);
+
+  useEffect(() => {
+    setCustomUrl(apiClient.defaults.baseURL || "");
+  }, []);
+
+  const handleSaveApiUrl = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (customUrl.trim()) {
+      const updated = setCustomApiUrl(customUrl);
+      setCustomUrl(updated);
+      setSavedNotice(true);
+      setError(null);
+      setTimeout(() => setSavedNotice(false), 3000);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +52,7 @@ export default function LoginPage() {
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } } };
       if (!errorObj.response) {
-        setError("Unable to connect to backend server. Please check Vercel NEXT_PUBLIC_API_BASE_URL environment variable.");
+        setError(`Cannot reach API server at [ ${apiClient.defaults.baseURL} ]. Click 'Backend Settings' below to update your Render URL.`);
       } else {
         setError(errorObj.response?.data?.message || "Invalid credentials. Please try again.");
       }
@@ -127,12 +147,50 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-8 pt-6 border-t border-gray-800 text-center">
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-400 mb-4">
             Don&apos;t have an account?{" "}
             <Link href="/register" className="text-emerald-400 font-semibold hover:underline">
               Create Smart Vault Account
             </Link>
           </p>
+
+          <button
+            type="button"
+            onClick={() => setShowApiSettings(!showApiSettings)}
+            className="inline-flex items-center gap-1.5 text-[11px] text-gray-500 hover:text-emerald-400 transition-colors font-mono"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            <span>{showApiSettings ? "Hide Backend Settings" : "Configure Live Render API URL"}</span>
+          </button>
+
+          {showApiSettings && (
+            <form onSubmit={handleSaveApiUrl} className="mt-3 p-3 bg-gray-900/90 border border-gray-700/60 rounded-xl text-left space-y-2">
+              <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                Backend API URL (Render / Server)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={customUrl}
+                  onChange={(e) => setCustomUrl(e.target.value)}
+                  placeholder="https://smart-vault-backend.onrender.com/api"
+                  className="flex-1 px-3 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-white text-xs font-mono focus:border-emerald-500 focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  className="px-3 py-1.5 bg-emerald-500 text-gray-950 font-bold text-xs rounded-lg hover:bg-emerald-400 transition-all flex items-center gap-1"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Save</span>
+                </button>
+              </div>
+              {savedNotice && (
+                <p className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                  <Check className="w-3 h-3" /> Live API URL updated & saved!
+                </p>
+              )}
+            </form>
+          )}
         </div>
       </div>
     </div>
