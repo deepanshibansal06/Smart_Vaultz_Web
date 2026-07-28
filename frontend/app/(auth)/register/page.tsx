@@ -15,7 +15,6 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
-  const [devCode, setDevCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [otpNotice, setOtpNotice] = useState<string | null>(null);
 
@@ -31,10 +30,7 @@ export default function RegisterPage() {
     try {
       const res = await sendOtp({ email, type: "signup" });
       setOtpNotice(res.message + (res.checkSpamNotice ? ` (${res.checkSpamNotice})` : ""));
-      if (res.devOtp) {
-        setDevCode(res.devOtp);
-        setOtp(res.devOtp);
-      }
+      setOtp("");
       setStep("otp");
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } } };
@@ -160,11 +156,6 @@ export default function RegisterPage() {
                   <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
                   <span>{otpNotice}</span>
                 </div>
-                {devCode && (
-                  <div className="mt-2 p-2 bg-emerald-950/80 border border-emerald-500/40 rounded-lg text-center font-mono text-sm text-emerald-300 font-bold tracking-widest">
-                    🔑 Local Dev OTP: {devCode}
-                  </div>
-                )}
               </div>
             )}
 
