@@ -101,14 +101,18 @@ async function sendViaResend(to, subject, html) {
   const { Resend } = require("resend");
   const apiKey = (process.env.RESEND_API_KEY || DEFAULT_RESEND_KEY).trim();
   const resend = new Resend(apiKey);
-  const from = process.env.RESEND_FROM || process.env.EMAIL_FROM || "SmartVaultz <onboarding@resend.dev>";
-  const { error } = await resend.emails.send({
-    from,
+  const { data, error } = await resend.emails.send({
+    from: "onboarding@resend.dev",
     to: [to.trim().toLowerCase()],
     subject,
     html,
   });
-  if (error) throw new Error(error.message || "Resend send failed");
+  if (error) {
+    console.error("Resend API Error:", error);
+    throw new Error(typeof error === "object" ? JSON.stringify(error) : String(error));
+  }
+  console.log(`[RESEND] Email successfully sent to ${to}:`, data);
+  return data;
 }
 
 let etherealAccount = null;
@@ -145,14 +149,14 @@ async function sendViaEthereal(to, subject, html) {
 
 async function dispatchEmail(to, subject, html) {
   try {
-    return await sendViaSmtp(to, subject, html);
-  } catch (err) {
-    console.warn("Gmail SMTP delivery failed, trying Resend:", err.message);
-  }
-  try {
     return await sendViaResend(to, subject, html);
   } catch (err) {
-    console.warn("Resend API key failed, trying Ethereal Webmail:", err.message);
+    console.warn("Resend API failed, trying Gmail SMTP:", err.message);
+  }
+  try {
+    return await sendViaSmtp(to, subject, html);
+  } catch (err) {
+    console.warn("Gmail SMTP delivery failed, trying Ethereal Webmail:", err.message);
   }
   try {
     return await sendViaEthereal(to, subject, html);
