@@ -20,6 +20,8 @@ export default function BookingModal({ vault, isOpen, onClose, onSuccess }: Book
   const [paymentMethod, setPaymentMethod] = useState<"wallet" | "upi">("wallet");
   const [error, setError] = useState<string | null>(null);
 
+  const [bookingSuccess, setBookingSuccess] = useState(false);
+
   if (!isOpen || !vault) return null;
 
   const handleConfirm = async () => {
@@ -31,108 +33,156 @@ export default function BookingModal({ vault, isOpen, onClose, onSuccess }: Book
 
     try {
       await bookVault({ vaultId: vault._id, paymentMethod });
-      onSuccess();
-      onClose();
+      setBookingSuccess(true);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } } };
       setError(errorObj.response?.data?.message || "Booking failed. Please try again.");
     }
   };
 
+  const handleDone = () => {
+    setBookingSuccess(false);
+    onSuccess();
+    onClose();
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
       <div className="relative w-full max-w-md glass-panel rounded-2xl p-6 border border-emerald-500/30 shadow-glow animate-in fade-in zoom-in duration-200">
         <button
-          onClick={onClose}
+          onClick={bookingSuccess ? handleDone : onClose}
           className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-gray-800 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center">
-            <Lock className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-white">Book Vault Locker #{vault.lockerNo}</h3>
-            <p className="text-xs text-gray-400">{vault.location || "Smart Vault Location"}</p>
-          </div>
-        </div>
+        {bookingSuccess ? (
+          <div className="text-center space-y-4 py-2">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center mx-auto shadow-glow">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
+            <div>
+              <span className="text-xs font-mono text-emerald-400 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 uppercase font-bold tracking-wider">
+                Booking Verified & Active 🟢
+              </span>
+              <h3 className="text-xl font-bold text-white mt-3">Locker #{vault.lockerNo} Reserved</h3>
+              <p className="text-xs text-gray-400 mt-1">{vault.location || "Smart Vault Location"}</p>
+            </div>
 
-        {/* Slot Summary */}
-        <div className="bg-gray-900/80 rounded-xl p-4 border border-gray-800 space-y-2 mb-6">
-          <div className="flex justify-between text-xs">
-            <span className="text-gray-400">Date Slot:</span>
-            <span className="text-white font-mono">{vault.slotDate || "Today"}</span>
-          </div>
-          <div className="flex justify-between text-xs">
-            <span className="text-gray-400">Time Slot:</span>
-            <span className="text-emerald-400 font-mono font-medium">{vault.timeSlot || "Standard Slot"}</span>
-          </div>
-          <div className="pt-2 border-t border-gray-800 flex justify-between items-center">
-            <span className="text-xs font-semibold text-white">Total Amount:</span>
-            <span className="text-lg font-bold text-emerald-400">{formatCurrency(vault.price)}</span>
-          </div>
-        </div>
-
-        {/* Payment Method Selector */}
-        <div className="space-y-3 mb-6">
-          <p className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Select Payment Method</p>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setPaymentMethod("wallet")}
-              className={`p-3.5 rounded-xl border flex flex-col items-start gap-1 transition-all ${
-                paymentMethod === "wallet"
-                  ? "bg-emerald-500/10 border-emerald-500 text-white shadow-glow"
-                  : "bg-gray-900/60 border-gray-800 text-gray-400 hover:border-gray-700"
-              }`}
-            >
-              <div className="flex items-center justify-between w-full">
-                <Wallet className="w-4 h-4 text-emerald-400" />
-                {paymentMethod === "wallet" && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+            <div className="bg-gray-900/90 rounded-xl p-4 border border-gray-800 space-y-2 text-left text-xs font-mono">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Date Slot:</span>
+                <span className="text-white font-bold">{vault.slotDate || "Today"}</span>
               </div>
-              <span className="text-xs font-bold text-white mt-1">Smart Wallet</span>
-              <span className="text-[10px] text-gray-400">Balance: {formatCurrency(balance)}</span>
-            </button>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Time Slot:</span>
+                <span className="text-emerald-400 font-bold">{vault.timeSlot || "Full Access"}</span>
+              </div>
+              <div className="flex justify-between pt-2 border-t border-gray-800">
+                <span className="text-gray-400">Amount Paid:</span>
+                <span className="text-white font-bold">{formatCurrency(vault.price)} ({paymentMethod.toUpperCase()})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Status:</span>
+                <span className="text-emerald-400 font-bold">CONFIRMED & READY</span>
+              </div>
+            </div>
 
             <button
-              type="button"
-              onClick={() => setPaymentMethod("upi")}
-              className={`p-3.5 rounded-xl border flex flex-col items-start gap-1 transition-all ${
-                paymentMethod === "upi"
-                  ? "bg-cyan-500/10 border-cyan-500 text-white shadow-cyanGlow"
-                  : "bg-gray-900/60 border-gray-800 text-gray-400 hover:border-gray-700"
-              }`}
+              onClick={handleDone}
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-gray-950 font-bold text-sm shadow-glow hover:opacity-95 transition-all"
             >
-              <div className="flex items-center justify-between w-full">
-                <CreditCard className="w-4 h-4 text-cyan-400" />
-                {paymentMethod === "upi" && <CheckCircle2 className="w-4 h-4 text-cyan-400" />}
-              </div>
-              <span className="text-xs font-bold text-white mt-1">Instant UPI</span>
-              <span className="text-[10px] text-gray-400">Direct Pay</span>
+              View My Dashboard & Locker
             </button>
           </div>
-        </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center">
+                <Lock className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Book Vault Locker #{vault.lockerNo}</h3>
+                <p className="text-xs text-gray-400">{vault.location || "Smart Vault Location"}</p>
+              </div>
+            </div>
 
-        {error && (
-          <div className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
-            <span>{error}</span>
-          </div>
+            {/* Slot Summary */}
+            <div className="bg-gray-900/80 rounded-xl p-4 border border-gray-800 space-y-2 mb-6">
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-400">Date Slot:</span>
+                <span className="text-white font-mono">{vault.slotDate || "Today"}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-400">Time Slot:</span>
+                <span className="text-emerald-400 font-mono font-medium">{vault.timeSlot || "Standard Slot"}</span>
+              </div>
+              <div className="pt-2 border-t border-gray-800 flex justify-between items-center">
+                <span className="text-xs font-semibold text-white">Total Amount:</span>
+                <span className="text-lg font-bold text-emerald-400">{formatCurrency(vault.price)}</span>
+              </div>
+            </div>
+
+            {/* Payment Method Selector */}
+            <div className="space-y-3 mb-6">
+              <p className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Select Payment Method</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("wallet")}
+                  className={`p-3.5 rounded-xl border flex flex-col items-start gap-1 transition-all ${
+                    paymentMethod === "wallet"
+                      ? "bg-emerald-500/10 border-emerald-500 text-white shadow-glow"
+                      : "bg-gray-900/60 border-gray-800 text-gray-400 hover:border-gray-700"
+                  }`}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <Wallet className="w-4 h-4 text-emerald-400" />
+                    {paymentMethod === "wallet" && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                  </div>
+                  <span className="text-xs font-bold text-white mt-1">Smart Wallet</span>
+                  <span className="text-[10px] text-gray-400">Balance: {formatCurrency(balance)}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("upi")}
+                  className={`p-3.5 rounded-xl border flex flex-col items-start gap-1 transition-all ${
+                    paymentMethod === "upi"
+                      ? "bg-cyan-500/10 border-cyan-500 text-white shadow-cyanGlow"
+                      : "bg-gray-900/60 border-gray-800 text-gray-400 hover:border-gray-700"
+                  }`}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <CreditCard className="w-4 h-4 text-cyan-400" />
+                    {paymentMethod === "upi" && <CheckCircle2 className="w-4 h-4 text-cyan-400" />}
+                  </div>
+                  <span className="text-xs font-bold text-white mt-1">Instant UPI</span>
+                  <span className="text-[10px] text-gray-400">Direct Pay</span>
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <button
+              onClick={handleConfirm}
+              disabled={isBooking}
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-gray-950 font-bold text-sm shadow-glow hover:opacity-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {isBooking ? (
+                <div className="w-5 h-5 border-2 border-gray-950 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <span>Confirm & Pay {formatCurrency(vault.price)}</span>
+              )}
+            </button>
+          </>
         )}
-
-        <button
-          onClick={handleConfirm}
-          disabled={isBooking}
-          className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-gray-950 font-bold text-sm shadow-glow hover:opacity-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          {isBooking ? (
-            <div className="w-5 h-5 border-2 border-gray-950 border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <span>Confirm & Pay {formatCurrency(vault.price)}</span>
-          )}
-        </button>
       </div>
     </div>
   );
