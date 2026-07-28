@@ -32,7 +32,7 @@ exports.sendOtp = async (req, res) => {
       }
     }
     const otp = generateOtp();
-    otpStore.set(emailNorm, type, otp);
+    await otpStore.set(emailNorm, type, otp);
     await sendMail.sendOtpEmail(emailNorm, otp, type);
     res.json({
       message: "OTP sent to your email",
@@ -51,7 +51,7 @@ exports.resetPassword = async (req, res) => {
     if (!emailNorm || !otp || !newPassword) {
       return res.status(400).json({ message: "Email, OTP and new password are required" });
     }
-    const stored = otpStore.get(emailNorm, "forgot");
+    const stored = await otpStore.get(emailNorm, "forgot");
     if (!stored || stored !== String(otp).trim()) {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
@@ -59,7 +59,7 @@ exports.resetPassword = async (req, res) => {
     if (!user) return res.status(400).json({ message: "User not found" });
     user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
-    otpStore.consume(emailNorm, "forgot");
+    await otpStore.consume(emailNorm, "forgot");
     res.json({ message: "Password reset successfully" });
   } catch (err) {
     res.status(400).json({ message: err.message || "Reset failed" });
@@ -78,11 +78,11 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: "OTP code is required to complete registration" });
     }
 
-    const stored = otpStore.get(emailNorm, "signup");
+    const stored = await otpStore.get(emailNorm, "signup");
     if (!stored || stored !== String(otp).trim()) {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
-    otpStore.consume(emailNorm, "signup");
+    await otpStore.consume(emailNorm, "signup");
 
     const hash = await bcrypt.hash(password, 10);
 
